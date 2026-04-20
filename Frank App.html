@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Frank — Life OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #111; font-family: 'Space Grotesk', sans-serif; display: flex; align-items: center; justify-content: center; }
+::-webkit-scrollbar { width: 0; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0px rgba(192,39,45,0.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(192,39,45,0); }
+  100% { box-shadow: 0 0 0 0px rgba(192,39,45,0); }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; } 50% { opacity: 0; }
+}
+@keyframes dot-bounce {
+  0%,80%,100% { opacity: 0.2; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-4px); }
+}
+@keyframes stream-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+
+.record-pulse { animation: pulse-ring 1.5s cubic-bezier(0.4,0,0.6,1) infinite; }
+.cursor-blink { animation: blink 1s step-end infinite; }
+.dot1 { animation: dot-bounce 1.2s infinite 0s; }
+.dot2 { animation: dot-bounce 1.2s infinite 0.2s; }
+.dot3 { animation: dot-bounce 1.2s infinite 0.4s; }
+
+/* Tweaks */
+#tweaks-panel {
+  display: none; position: fixed; bottom: 24px; right: 24px;
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px;
+  padding: 20px; width: 240px; z-index: 9999;
+  font-family: 'Space Grotesk', sans-serif;
+}
+#tweaks-panel.visible { display: block; }
+.tw-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #444; margin-bottom: 8px; }
+.tw-row { margin-bottom: 14px; }
+.tw-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.tw-btn { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 4px; border: 1px solid #2a2a2a; background: #111; color: #666; cursor: pointer; transition: all 0.12s; letter-spacing: 0.04em; }
+.tw-btn.on { color: #000; border-color: transparent; }
+.tw-title { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="frank-shared.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#7C8FBB",
+  "startScreen": "onboarding",
+  "dumpState": "review"
+}/*EDITMODE-END*/;
+
+// ════════════════════════════════════════════════════════════
+// SCREEN: DASHBOARD
+// ════════════════════════════════════════════════════════════
+function DashboardScreen({ onNavigate }) {
+  const [habits, setHabits] = React.useState([
+    { id:1, name:'5am run', sub:'30 min minimum', status:null },
+    { id:2, name:'No alcohol', sub:'Day 12 of streak', status:null },
+    { id:3, name:'Journal', sub:'10 min, pen on paper', status:null },
+  ]);
+  const [read, setRead] = React.useState(false);
+  const done = habits.filter(h=>h.status==='done').length;
+  const accent = DS.accent;
+
+  const setStatus = (id, s) => setHabits(p=>p.map(h=>h.id===id ? {...h, status: h.status===s?null:s} : h));
+
+  return (
+    <ScreenShell nav="dashboard" onNavigate={onNavigate}>
+      {/* trial banner */}
+      <div style={{ background:'#141414', borderBottom:`1px solid ${DS.border}`, padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span style={{ fontSize:12, color:'#555', fontWeight:500, letterSpacing:'0.02em' }}>11 days left in trial</span>
+        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.06em', color:accent, textTransform:'uppercase' }}>Upgrade</span>
+      </div>
+
+      {/* header */}
+      <div style={{ padding:'24px 20px 0', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div>
+          <div style={{ fontSize:12, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'#444', marginBottom:4 }}>Sunday, Apr 20</div>
+          <div style={{ fontSize:28, fontWeight:700, color:'#fff', lineHeight:1.1 }}>Dashboard</div>
+        </div>
+        <div style={{ width:38, height:38, borderRadius:'50%', background:'#1c1c1c', border:'1px solid #2a2a2a', display:'flex', alignItems:'center', justifyContent:'center', color:'#555', fontSize:15, fontWeight:700 }}>A</div>
+      </div>
+
+      {/* true north */}
+      <div style={{ padding:'20px 20px 0' }}>
+        <div style={{ background:DS.card, border:`1px solid ${DS.border}`, borderLeft:`3px solid ${accent}`, borderRadius:4, padding:'20px 20px 20px 18px' }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:accent, marginBottom:12 }}>True North</div>
+          <div style={{ fontSize:22, fontWeight:700, color:'#fff', lineHeight:1.25, marginBottom:14, letterSpacing:'-0.02em' }}>
+            Run a marathon before I turn 40. No asterisks.
+          </div>
+          <div style={{ display:'flex', gap:20 }}>
+            {[['Deadline','Nov 14, 2025'],['Progress','Week 7 of 24'],['Long run','12 mi']].map(([l,v])=>(
+              <div key={l}>
+                <div style={{ fontSize:11, color:'#444', fontWeight:500, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:3 }}>{l}</div>
+                <div style={{ fontSize:14, fontWeight:600, color:'#888' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* frank message */}
+      <div style={{ padding:'20px 20px 0' }}>
+        <SectionLabel>Frank</SectionLabel>
+        <div style={{ background:DS.elevated, border:`1px solid ${DS.border}`, borderRadius:'4px 16px 16px 16px', padding:'16px 18px', cursor:'pointer' }} onClick={()=>setRead(true)}>
+          <div style={{ fontFamily:DS.fontFrank, fontSize:14, lineHeight:1.65, color:read?'#888':'#e0e0e0', transition:'color 0.3s' }}>
+            You skipped your run three times this week. That's not a bad day. That's a pattern. What are you telling yourself to make that okay?
+          </div>
+          <div style={{ marginTop:12, display:'flex', justifyContent:'space-between' }}>
+            <span style={{ fontSize:11, color:'#333', fontFamily:DS.fontFrank }}>8:03 AM</span>
+            <span style={{ fontSize:11, color:read?accent:'#333', fontWeight:read?600:400, letterSpacing:'0.04em' }}>{read?'Read':'● Unread'}</span>
+          </div>
+        </div>
+        <div style={{ marginTop:8, textAlign:'right' }}>
+          <span style={{ fontSize:12, color:'#333', fontWeight:500, letterSpacing:'0.04em', borderBottom:'1px solid #222', paddingBottom:1, cursor:'pointer' }}>Reply to Frank →</span>
+        </div>
+      </div>
+
+      {/* habits */}
+      <div style={{ padding:'24px 20px 0' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14 }}>
+          <SectionLabel>Today's Habits</SectionLabel>
+          <div style={{ fontSize:12, fontWeight:600, color:done===3?accent:'#444' }}>{done}/3 {done===3?'— done.':'complete'}</div>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+          {habits.map((h,i)=>(
+            <HabitRow key={h.id} habit={h} accent={accent} onSet={s=>setStatus(h.id,s)} isLast={i===habits.length-1}/>
+          ))}
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+function HabitRow({ habit, accent, onSet, isLast }) {
+  const isDone=habit.status==='done', isGrace=habit.status==='grace', isSkip=habit.status==='skip';
+  return (
+    <div style={{ background:DS.card2, border:`1px solid ${DS.borderSubtle}`, borderRadius:4, padding:'14px 16px', marginBottom:isLast?0:2, opacity:isSkip?0.45:1, transition:'opacity 0.2s' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+        <div>
+          <div style={{ fontSize:16, fontWeight:600, color:isDone?'#444':'#d0d0d0', textDecoration:isSkip?'line-through':'none', transition:'color 0.2s' }}>{habit.name}</div>
+          <div style={{ fontSize:12, color:'#383838', fontWeight:500, marginTop:2 }}>{habit.sub}</div>
+        </div>
+        {isDone && <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:accent }}>Done</span>}
+        {isGrace && <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#666' }}>Grace</span>}
+      </div>
+      <div style={{ display:'flex', gap:8 }}>
+        {[['Done','done',{background:accent,color:'#000'}],['Grace','grace',{background:'#2a2a2a',color:'#888',borderColor:'#333'}],['Skip','skip',{background:'#1a1a1a',color:'#555',borderColor:'#222'}]].map(([label,id,aStyle])=>(
+          <button key={id} onClick={()=>onSet(id)} style={{ fontFamily:DS.fontUI, fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', padding:'7px 14px', borderRadius:3, border:`1px solid ${DS.border}`, background:habit.status===id?undefined:'#141414', color:habit.status===id?undefined:'#3a3a3a', cursor:'pointer', transition:'all 0.12s', ...(habit.status===id?aStyle:{}) }}>{label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════
+// SCREEN 2: MORNING BRIEFING
+// ════════════════════════════════════════════════════════════
+const BRIEFING_TEXT = `Asadbek. It's Sunday. You've opened this app 6 days in a row, which means you're still in it — that counts for something. Here's what the data says: habits were 2/3 most days this week. The journal habit is solid. The run is the problem — three misses, same pattern as last week. Your mood has been 'low' four of the last five mornings. That's worth paying attention to. It's probably not the runs causing the low mood. It's probably the opposite. One priority today: go for the run. Not 5am. Just go.`;
+
+function BriefingScreen({ onNavigate }) {
+  const [mood, setMood] = React.useState(null);
+  const [streaming, setStreaming] = React.useState(true);
+  const [displayed, setDisplayed] = React.useState('');
+  const accent = DS.accent;
+
+  React.useEffect(() => {
+    const words = BRIEFING_TEXT.split(' ');
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < words.length) {
+        setDisplayed(words.slice(0,i+1).join(' '));
+        i++;
+      } else {
+        setStreaming(false);
+        clearInterval(interval);
+      }
+    }, 38);
+    return () => clearInterval(interval);
+  }, []);
+
+  const moods = ['Rough','Low','Okay','Good','Solid'];
+
+  return (
+    <ScreenShell nav="briefing" onNavigate={onNavigate}>
+      <div style={{ padding:'20px 20px 0' }}>
+        <div style={{ fontSize:12, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'#444', marginBottom:4 }}>Sunday, Apr 20</div>
+        <div style={{ fontSize:28, fontWeight:700, color:'#fff', lineHeight:1.1, marginBottom:24 }}>Morning Briefing</div>
+
+        {/* frank label */}
+        <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:accent, marginBottom:12 }}>Frank · Today</div>
+
+        {/* separator */}
+        <div style={{ height:1, background:DS.border, marginBottom:20 }}/>
+
+        {/* streaming or dots */}
+        {streaming && displayed.length === 0 ? (
+          <div style={{ display:'flex', gap:6, alignItems:'center', height:40 }}>
+            {[0,1,2].map(i=>(
+              <div key={i} className={`dot${i+1}`} style={{ width:6, height:6, borderRadius:'50%', background:'#444' }}/>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontFamily:DS.fontFrank, fontSize:14, lineHeight:1.7, color:'#e0e0e0', letterSpacing:'0.01em' }}>
+            {displayed}
+            {streaming && <span className="cursor-blink" style={{ display:'inline-block', width:2, height:14, background:accent, marginLeft:2, verticalAlign:'middle' }}/>}
+          </div>
+        )}
+      </div>
+
+      {/* sticky bottom */}
+      <div style={{ position:'sticky', bottom:0, background:DS.bg, borderTop:`1px solid ${DS.border}`, padding:'16px 20px', marginTop:24 }}>
+        {/* mood check-in */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:11, color:'#444', marginBottom:10, fontWeight:500 }}>How are you?</div>
+          <div style={{ display:'flex', gap:6 }}>
+            {moods.map(m=>(
+              <button key={m} onClick={()=>setMood(m)} style={{
+                flex:1, padding:'7px 0', fontFamily:DS.fontUI, fontSize:11, fontWeight:700,
+                letterSpacing:'0.05em', textTransform:'uppercase', borderRadius:3, border:`1px solid ${mood===m?accent:DS.border}`,
+                background:mood===m?accent:DS.card, color:mood===m?'#000':'#333',
+                cursor:'pointer', transition:'all 0.12s',
+              }}>{m}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* listen */}
+        <button style={{
+          width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+          padding:'12px', fontFamily:DS.fontUI, fontSize:12, fontWeight:700,
+          letterSpacing:'0.06em', textTransform:'uppercase',
+          border:`1px solid ${DS.border}`, borderRadius:3, background:'transparent',
+          color:'#333', cursor:'not-allowed',
+        }}>
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+            <rect x="1" y="1" width="10" height="12" rx="2" stroke="#333" strokeWidth="1.4"/>
+            <path d="M4 5h4M4 7.5h3M4 10h2" stroke="#333" strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="9.5" cy="10" r="2.5" fill="#0a0a0a" stroke="#333" strokeWidth="1.2"/>
+            <path d="M8.5 10h2M9.5 9v2" stroke="#333" strokeWidth="1" strokeLinecap="round"/>
+          </svg>
+          Listen (Pro)
+        </button>
+      </div>
+    </ScreenShell>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════
+// SCREEN 3: BRAIN DUMP
+// ════════════════════════════════════════════════════════════
+const TRANSCRIPT = "I need to reply to Nitin's email about the assignment. Also I've been feeling really overwhelmed with—";
+const CLASSIFIED = [
+  { type:'TASK',  text:"Reply to Nitin's email about the assignment" },
+  { type:'MOOD',  text:"Feeling overwhelmed with deadlines" },
+  { type:'HABIT', text:"Skipped gym — overslept" },
+];
+const TYPE_COLOR = { TASK: DS.accent, MOOD:'#555', HABIT:'#555' };
+
+function DumpScreen({ onNavigate, defaultState }) {
+  const [dumpState, setDumpState] = React.useState(defaultState || 'idle');
+  const [transcriptShown, setTranscriptShown] = React.useState(false);
+  const accent = DS.accent;
+
+  React.useEffect(() => {
+    if (dumpState === 'recording') {
+      const t = setTimeout(() => setTranscriptShown(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [dumpState]);
+
+  return (
+    <ScreenShell nav="dump" onNavigate={onNavigate}>
+      <div style={{ padding:'20px 20px 0' }}>
+        <div style={{ fontSize:28, fontWeight:700, color:'#fff', lineHeight:1.1, marginBottom:32 }}>Brain Dump</div>
+
+        {/* STATE A / B — record button */}
+        {dumpState !== 'review' && (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:32 }}>
+            <button
+              onClick={() => setDumpState(s => s === 'idle' ? 'recording' : 'review')}
+              className={dumpState === 'recording' ? 'record-pulse' : ''}
+              style={{
+                width:80, height:80, borderRadius:6, background:DS.elevated,
+                border:`2px solid ${accent}`, display:'flex', alignItems:'center', justifyContent:'center',
+                cursor:'pointer', transition:'all 0.2s',
+              }}
+            >
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+                <rect x="8" y="1" width="12" height="22" rx="6" stroke={accent} strokeWidth="2"/>
+                <path d="M4 18c0 5.5 4.5 10 10 10s10-4.5 10-10" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
+                <line x1="14" y1="28" x2="14" y2="34" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
+                <line x1="9" y1="34" x2="19" y2="34" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <div style={{ marginTop:14, fontFamily:DS.fontFrank, fontSize:12, color:dumpState==='recording'?accent:'#444', letterSpacing:'0.04em', transition:'color 0.2s' }}>
+              {dumpState === 'recording' ? 'Tap to stop' : 'Tap to dump your brain'}
+            </div>
+            {dumpState === 'idle' && (
+              <div style={{ marginTop:8, fontFamily:DS.fontFrank, fontSize:11, color:DS.textMuted, textAlign:'center', maxWidth:240 }}>
+                Say anything. Tasks, thoughts, how you're feeling.
+              </div>
+            )}
+
+            {/* live transcript */}
+            {dumpState === 'recording' && transcriptShown && (
+              <div style={{ width:'100%', marginTop:20, background:DS.card, border:`1px solid ${DS.border}`, borderRadius:4, padding:16 }}>
+                <div style={{ fontFamily:DS.fontFrank, fontSize:14, color:'#e0e0e0', lineHeight:1.65 }}>
+                  {TRANSCRIPT}
+                  <span className="cursor-blink" style={{ display:'inline-block', width:2, height:14, background:accent, marginLeft:2, verticalAlign:'middle' }}/>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* STATE C — review */}
+        {dumpState === 'review' && (
+          <div>
+            {/* transcript toggle */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, paddingBottom:12, borderBottom:`1px solid ${DS.border}` }}>
+              <span style={{ fontSize:11, color:'#444', fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>Recording</span>
+              <span style={{ fontSize:12, color:'#555', cursor:'pointer', fontFamily:DS.fontFrank }}>View transcript →</span>
+            </div>
+
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#444', marginBottom:12 }}>
+              Frank classified this:
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
+              {CLASSIFIED.map((item,i)=>(
+                <div key={i} style={{ background:DS.card, border:`1px solid ${DS.border}`, borderRadius:4, padding:'12px 16px', display:'flex', alignItems:'center', gap:12 }}>
+                  <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:TYPE_COLOR[item.type], minWidth:42 }}>{item.type}</span>
+                  <span style={{ fontSize:14, color:'#d0d0d0', flex:1, lineHeight:1.4 }}>{item.text}</span>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink:0 }}>
+                    <path d="M9.5 1.5l3 3-8 8H1.5v-3l8-8z" stroke="#333" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              ))}
+            </div>
+
+            <FrankBubble text="You mentioned the gym. That's twice this week you've brought it up without going." style={{ marginBottom:20 }}/>
+
+            <PrimaryBtn onClick={()=>setDumpState('idle')}>Confirm & Save</PrimaryBtn>
+            <div style={{ textAlign:'center', marginTop:12 }}>
+              <span onClick={()=>setDumpState('idle')} style={{ fontSize:12, color:'#444', cursor:'pointer', letterSpacing:'0.04em' }}>Discard</span>
+            </div>
+          </div>
+        )}
+
+        {/* re-record link if review */}
+        {dumpState === 'review' && (
+          <div style={{ marginTop:16, textAlign:'center' }}>
+            <span onClick={()=>setDumpState('idle')} style={{ fontSize:11, color:'#333', cursor:'pointer', fontFamily:DS.fontFrank }}>← Record again</span>
+          </div>
+        )}
+      </div>
+    </ScreenShell>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════
+// SCREEN 4: PROFILE
+// ════════════════════════════════════════════════════════════
+const PROFILE_SECTIONS = [
+  { id:'sleep', label:'Sleep Schedule', question:'When do you usually sleep?', done:true,
+    content: () => (
+      <div style={{ display:'flex', gap:10 }}>
+        {[['Sleep','11:00 PM'],['Wake','5:00 AM']].map(([l,v])=>(
+          <div key={l} style={{ flex:1 }}>
+            <div style={{ fontSize:11, color:'#444', marginBottom:6, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{l}</div>
+            <div style={{ background:'#141414', border:`1px solid ${DS.border}`, borderRadius:3, padding:'10px 12px', fontSize:14, color:'#d0d0d0', fontFamily:DS.fontFrank }}>{v}</div>
+          </div>
+        ))}
+      </div>
+    )
+  },
+  { id:'work', label:'Work / Study Hours', question:'When are you usually working?', done:true,
+    content: () => (
+      <div style={{ display:'flex', gap:10 }}>
+        {[['Start','9:00 AM'],['End','6:00 PM']].map(([l,v])=>(
+          <div key={l} style={{ flex:1 }}>
+            <div style={{ fontSize:11, color:'#444', marginBottom:6, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{l}</div>
+            <div style={{ background:'#141414', border:`1px solid ${DS.border}`, borderRadius:3, padding:'10px 12px', fontSize:14, color:'#d0d0d0', fontFamily:DS.fontFrank }}>{v}</div>
+          </div>
+        ))}
+      </div>
+    )
+  },
+  { id:'life', label:'Life Context', question:"What's going on in your life right now?", done:true,
+    content: () => (
+      <textarea defaultValue="Sem 6, building Frank, trying to stay sane." style={{ width:'100%', background:'#141414', border:`1px solid ${DS.border}`, borderRadius:4, padding:'12px 14px', fontFamily:DS.fontFrank, fontSize:13, color:'#e0e0e0', lineHeight:1.6, resize:'none', outline:'none', rows:3 }} rows={3}/>
+    )
+  },
+  { id:'values', label:'Core Values', question:'What actually matters to you?', done:false,
+    content: () => {
+      const [tags, setTags] = React.useState(['Discipline','Family','Impact']);
+      return (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+          {tags.map(t=>(
+            <span key={t} style={{ fontSize:11, fontWeight:600, padding:'5px 10px', border:`1px solid ${DS.accent}`, borderRadius:3, color:DS.accent, letterSpacing:'0.04em', textTransform:'uppercase' }}>{t}</span>
+          ))}
+          <span style={{ fontSize:11, fontWeight:600, color:'#444', padding:'5px 10px', border:'1px solid #222', borderRadius:3, cursor:'pointer', letterSpacing:'0.04em' }}>+ Add</span>
+        </div>
+      );
+    }
+  },
+];
+
+function ProfileScreen({ onNavigate }) {
+  const [open, setOpen] = React.useState({ sleep:true });
+  const accent = DS.accent;
+  const completedCount = PROFILE_SECTIONS.filter(s=>s.done).length;
+  const pct = Math.round((completedCount / PROFILE_SECTIONS.length) * 100);
+
+  return (
+    <ScreenShell nav="profile" onNavigate={onNavigate}>
+      {/* header */}
+      <div style={{ padding:'20px 20px 0', display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+        <div style={{ fontSize:28, fontWeight:700, color:'#fff', lineHeight:1.1 }}>Profile</div>
+        <div style={{ width:38, height:38, borderRadius:'50%', background:'#1c1c1c', border:'1px solid #2a2a2a', display:'flex', alignItems:'center', justifyContent:'center', color:'#555', fontSize:15, fontWeight:700 }}>A</div>
+      </div>
+
+      {/* completion bar */}
+      <div style={{ padding:'0 20px', marginBottom:24 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
+          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#444' }}>Frank Knows You</div>
+          <div style={{ fontSize:12, fontWeight:600, color:'#555' }}>{pct}% — keep going</div>
+        </div>
+        <div style={{ height:3, background:'#1a1a1a', borderRadius:2, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:accent, borderRadius:2, transition:'width 0.5s ease' }}/>
+        </div>
+        <div style={{ marginTop:8, fontSize:11, color:'#333', fontStyle:'italic' }}>
+          Fill in more → Frank's briefings get more specific
+        </div>
+      </div>
+
+      {/* sections */}
+      <div style={{ padding:'0 20px', display:'flex', flexDirection:'column', gap:2 }}>
+        {PROFILE_SECTIONS.map(sec => (
+          <div key={sec.id} style={{ background:DS.card, border:`1px solid ${DS.border}`, borderRadius:4, overflow:'hidden' }}>
+            <div
+              onClick={()=>setOpen(p=>({...p,[sec.id]:!p[sec.id]}))}
+              style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}
+            >
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'#d0d0d0' }}>{sec.label}</div>
+                <div style={{ fontSize:11, color:'#444', marginTop:2 }}>{sec.question}</div>
+              </div>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:sec.done?accent:'transparent', border:`1.5px solid ${sec.done?accent:'#333'}`, flexShrink:0 }}/>
+              <svg width="6" height="10" viewBox="0 0 6 10" fill="none" style={{ transform:open[sec.id]?'rotate(90deg)':'', transition:'transform 0.2s', flexShrink:0 }}>
+                <path d="M1 1l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            {open[sec.id] && (
+              <div style={{ padding:'0 16px 16px', borderTop:`1px solid ${DS.borderSubtle}` }}>
+                <div style={{ height:12 }}/>
+                {sec.content()}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* delete */}
+      <div style={{ textAlign:'center', padding:'32px 20px 16px' }}>
+        <span style={{ fontSize:12, color:'#333', cursor:'pointer', letterSpacing:'0.02em' }}>Delete all my data</span>
+      </div>
+    </ScreenShell>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════
+// SCREEN 5: ONBOARDING
+// ════════════════════════════════════════════════════════════
+const PRESETS = ['Daily run','No social media before 10am','Journal (10 min)','No alcohol','Cold shower','Read before bed'];
+
+function OnboardingScreen({ onFinish }) {
+  const [step, setStep] = React.useState(1);
+  const [name, setName] = React.useState('');
+  const [goal, setGoal] = React.useState('');
+  const [selected, setSelected] = React.useState([]);
+  const accent = DS.accent;
+
+  const next = () => {
+    if (step < 3) setStep(s=>s+1);
+    else onFinish();
+  };
+
+  const toggleHabit = (h) => setSelected(p => p.includes(h) ? p.filter(x=>x!==h) : [...p,h]);
+
+  return (
+    <div style={{ position:'absolute', inset:0, background:DS.bg, display:'flex', flexDirection:'column' }}>
+      {/* status bar */}
+      <div style={{ height:50, flexShrink:0, display:'flex', alignItems:'flex-end', paddingBottom:6, paddingLeft:20, paddingRight:20, justifyContent:'space-between' }}>
+        <span style={{ fontSize:15, fontWeight:600, color:'#fff', fontFamily:'-apple-system, system-ui' }}>9:41</span>
+        <div style={{ display:'flex', gap:5 }}>
+          <svg width="16" height="11" viewBox="0 0 17 12"><path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill="white"/><circle cx="8.5" cy="10.5" r="1.5" fill="white"/></svg>
+          <svg width="24" height="12" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="white" strokeOpacity="0.35" fill="none"/><rect x="2" y="2" width="18" height="9" rx="2" fill="white"/></svg>
+        </div>
+      </div>
+      <div style={{ position:'absolute', top:10, left:'50%', transform:'translateX(-50%)', width:120, height:34, borderRadius:20, background:'#000', zIndex:100 }}/>
+
+      {/* progress dots */}
+      <div style={{ display:'flex', gap:8, justifyContent:'center', paddingTop:16, paddingBottom:8 }}>
+        {[1,2,3].map(i=>(
+          <div key={i} style={{ width:i===step?20:6, height:6, borderRadius:3, background:i===step?accent:'#222', transition:'all 0.25s' }}/>
+        ))}
+      </div>
+
+      {/* content */}
+      <div style={{ flex:1, overflowY:'auto', padding:'32px 24px 0' }}>
+
+        {step === 1 && (
+          <div>
+            <div style={{ fontSize:32, fontWeight:700, color:'#fff', letterSpacing:'-0.03em', lineHeight:1.1, marginBottom:12 }}>Hey. I'm Frank.</div>
+            <div style={{ fontSize:20, fontWeight:400, color:'#555', marginBottom:40 }}>What do I call you?</div>
+            <input
+              value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
+              style={{ width:'100%', background:'#141414', border:`1px solid ${DS.border}`, borderRadius:4, padding:'16px', fontFamily:DS.fontUI, fontSize:16, color:'#fff', outline:'none', caretColor:accent, placeholderColor:'#333' }}
+            />
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <div style={{ fontSize:26, fontWeight:700, color:'#fff', letterSpacing:'-0.02em', lineHeight:1.2, marginBottom:12 }}>What's the one thing you're trying to build or become?</div>
+            <div style={{ fontSize:14, fontWeight:400, color:'#444', marginBottom:32 }}>One sentence. Be honest, not aspirational.</div>
+            <textarea
+              value={goal} onChange={e=>setGoal(e.target.value)} rows={3}
+              placeholder="e.g. Run a marathon before I turn 40."
+              style={{ width:'100%', background:'#141414', border:`1px solid ${DS.border}`, borderRadius:4, padding:'16px', fontFamily:DS.fontFrank, fontSize:14, color:'#e0e0e0', lineHeight:1.65, outline:'none', resize:'none', caretColor:accent }}
+            />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <div style={{ fontSize:28, fontWeight:700, color:'#fff', letterSpacing:'-0.02em', lineHeight:1.1, marginBottom:10 }}>Pick 2–3 habits.</div>
+            <div style={{ fontSize:14, color:'#444', marginBottom:28 }}>Not what you wish you did. What you'll actually do.</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {PRESETS.map(h=>{
+                const sel = selected.includes(h);
+                return (
+                  <div key={h} onClick={()=>toggleHabit(h)} style={{
+                    background:DS.card, border:`1px solid ${DS.border}`,
+                    borderLeft:sel?`3px solid ${accent}`:`1px solid ${DS.border}`,
+                    borderRadius:4, padding:sel?'14px 16px 14px 14px':'14px 16px',
+                    cursor:'pointer', transition:'border 0.15s',
+                  }}>
+                    <span style={{ fontSize:15, fontWeight:sel?600:400, color:sel?'#e0e0e0':'#888', transition:'all 0.15s' }}>{h}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop:14, fontSize:12, color:accent, cursor:'pointer', fontWeight:600, letterSpacing:'0.04em' }}>+ Add your own</div>
+          </div>
+        )}
+      </div>
+
+      {/* continue button */}
+      <div style={{ padding:'20px 24px 40px', flexShrink:0 }}>
+        <PrimaryBtn
+          onClick={next}
+          disabled={step===3 && selected.length===0}
+        >
+          {step===1 ? 'Continue →' : step===2 ? "That's my north star →" : "Let's go →"}
+        </PrimaryBtn>
+        {step > 1 && (
+          <div style={{ textAlign:'center', marginTop:12 }}>
+            <span onClick={()=>setStep(s=>s-1)} style={{ fontSize:12, color:'#444', cursor:'pointer', fontFamily:DS.fontFrank }}>← Back</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════
+// ROOT APP
+// ════════════════════════════════════════════════════════════
+function App() {
+  const [tweaks, setTweaks] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('frank-tweaks')) || TWEAK_DEFAULTS; } catch { return TWEAK_DEFAULTS; }
+  });
+
+  const startScreen = tweaks.startScreen === 'onboarding' ? 'onboarding' : tweaks.startScreen || 'dashboard';
+  const [screen, setScreen] = React.useState(() => {
+    const saved = localStorage.getItem('frank-screen');
+    return saved && saved !== 'onboarding' ? saved : startScreen;
+  });
+
+  const navigate = (s) => { setScreen(s); localStorage.setItem('frank-screen', s); };
+
+  const updateTweak = (key, val) => {
+    const next = { ...tweaks, [key]: val };
+    setTweaks(next);
+    localStorage.setItem('frank-tweaks', JSON.stringify(next));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');
+  };
+
+  // Override DS accent from tweaks
+  React.useEffect(() => { DS.accent = tweaks.accent || '#C0272D'; }, [tweaks.accent]);
+
+  React.useEffect(() => {
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel').classList.add('visible');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('visible');
+    });
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  }, []);
+
+  const SCREENS = {
+    'onboarding': <OnboardingScreen onFinish={()=>navigate('dashboard')}/>,
+    'dashboard':  <DashboardScreen onNavigate={navigate}/>,
+    'briefing':   <BriefingScreen onNavigate={navigate}/>,
+    'dump':       <DumpScreen onNavigate={navigate} defaultState={tweaks.dumpState || 'idle'}/>,
+    'profile':    <ProfileScreen onNavigate={navigate}/>,
+  };
+
+  const ACCENTS = { 'Amber':'#D4620A', 'Crimson':'#C0272D', 'Electric':'#B8A800', 'Slate':'#7C8FBB' };
+  const SCREENS_LIST = [['onboarding','Onboarding'],['dashboard','Dashboard'],['briefing','Briefing'],['dump','Dump'],['profile','Profile']];
+  const DUMP_STATES = [['idle','Ready'],['recording','Recording'],['review','Review']];
+
+  return (
+    <div style={{ position:'relative' }}>
+      {/* Phone frame */}
+      <div style={{
+        width:390, height:844, borderRadius:44, overflow:'hidden', position:'relative',
+        background:'#000',
+        boxShadow:'0 0 0 1px #222, 0 40px 80px rgba(0,0,0,0.6), 0 0 0 10px #0d0d0d, 0 0 0 11px #1a1a1a',
+      }}>
+        {SCREENS[screen] || SCREENS['dashboard']}
+      </div>
+
+      {/* Tweaks */}
+      <div id="tweaks-panel">
+        <div className="tw-title">Tweaks</div>
+
+        <div className="tw-row">
+          <div className="tw-label">Screen</div>
+          <div className="tw-opts">
+            {SCREENS_LIST.map(([id,label])=>(
+              <button key={id} className={`tw-btn ${screen===id?'on':''}`}
+                style={screen===id?{background:tweaks.accent,color:'#000'}:{}}
+                onClick={()=>{ updateTweak('startScreen',id); navigate(id); }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tw-row">
+          <div className="tw-label">Accent</div>
+          <div className="tw-opts">
+            {Object.entries(ACCENTS).map(([name,val])=>(
+              <button key={name} className={`tw-btn ${tweaks.accent===val?'on':''}`}
+                style={tweaks.accent===val?{background:val,color:'#000',borderColor:val}:{}}
+                onClick={()=>updateTweak('accent',val)}>{name}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tw-row">
+          <div className="tw-label">Dump State</div>
+          <div className="tw-opts">
+            {DUMP_STATES.map(([id,label])=>(
+              <button key={id} className={`tw-btn ${tweaks.dumpState===id?'on':''}`}
+                style={tweaks.dumpState===id?{background:tweaks.accent,color:'#000'}:{}}
+                onClick={()=>{ updateTweak('dumpState',id); if(screen==='dump') navigate('dump'); }}>{label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
